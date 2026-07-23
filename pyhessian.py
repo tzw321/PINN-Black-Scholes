@@ -1,12 +1,18 @@
 '''
-Original paper: PyHessian: Neural Networks Through the Lens of the Hessian (https://arxiv.org/abs/1912.07145)
-Original authors implementation: https://github.com/amirgholami/PyHessian
+PyHessian original paper: PyHessian: Neural Networks Through the Lens of the Hessian (https://arxiv.org/abs/1912.07145)
+PyHessian original implementation: https://github.com/amirgholami/PyHessian
 
-Code is adapted to work with PINNs. 
+The code below are from another author PyHessian that is adapted for PINN
+
+Original paper: Challenges in Training PINNs: A Loss Landscape Perspective (https://arxiv.org/abs/2402.01868)
+Original authors implementation: https://github.com/pratikrathore8/opt_for_pinns
+
+Some code are changed to align with main.ipynb file. 
 '''
 
 import torch
 import numpy as np
+from matplotlib import pyplot as plt
 
 ### utility functions ###
 
@@ -193,3 +199,46 @@ class hessian():
         computed_dim += 1
 
     return eigenvalues, eigenvectors, iter_used
+
+
+def generate_density(eigenvalues, weights, num_grid_points=int(1e5), sigma_squared=1e-5, boundary_margin=1e-3):
+
+  def gaussian(x, x0, variance):
+    return np.exp(-(x0 - x)**2 / (2.0 * variance)) / np.sqrt(2 * np.pi * variance)
+
+  eigenvalues = np.array(eigenvalues).real
+  weights = np.array(weights).real
+
+  num_runs, num_eigvals = eigenvalues.shape
+
+  lambda_max = np.mean(np.max(eigenvalues, axis=1), axis=0) + boundary_margin
+  lambda_min = np.mean(np.min(eigenvalues, axis=1), axis=0) - boundary_margin
+
+  grid_points = np.linspace(lambda_min, lambda_max, num=num_grid_points)
+  grid_length = (lambda_max - lambda_min) / (num_grid_points - 1)
+
+  sigma = sigma_squared * max(1, (lambda_max - lambda_min))
+
+  # compute density
+  densities = np.zeros((num_runs, num_grid_points), dtype=eigenvalues.dtype)
+  for i in range(num_runs):
+    for j in range(num_grid_points):
+      x = grid_points[j]
+      convolutions = gaussian(eigenvalues[i,:], x, sigma)
+      densities[i,j] = np.sum(convolutions * weights[i,:])
+
+  # average across runs
+  densities = np.mean(densities, axis=0)
+  densities = densities / (np.sum(densities) * grid_length)
+
+  return densities, grid_points
+
+def get_esd_plot(eigenvalues, weights):
+    density, grids = generate_density(eigenvalues, weights)
+    plt.semilogy(grids, density + 1.0e-7)
+    plt.ylabel('Density (Log Scale)', fontsize=14, labelpad=10)
+    plt.xlabel('Eigenvlaue', fontsize=14, labelpad=10)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
+    plt.tight_layout()
