@@ -59,13 +59,11 @@ def hessian_vector_product(gradsH, params, v):
 
 class hessian():
   """
-  Class for computing spectral density of (L-BFGS) pre-conditioned Hessian. 
+  Class for computing spectral density of Hessian. 
 
   - model: instance of PINN
-  - pred_func: prediction function
   - loss_func: loss function
   - data: tuple of spatial and temporal inputs
-  - loss_comp: string indicating which component of the loss to use (will use total loss for any value other than "res", "bc", or "ic")
   - device: string indicating which CUDA device to use (where both model and data reside)
   """
   def __init__(self, model, loss_func, data, device='cuda'):
@@ -235,10 +233,4 @@ def generate_density(eigenvalues, weights, num_grid_points=int(1e5), sigma_squar
 
 def get_esd_plot(eigenvalues, weights):
     density, grids = generate_density(eigenvalues, weights)
-    plt.semilogy(grids, density + 1.0e-7)
-    plt.ylabel('Density (Log Scale)', fontsize=14, labelpad=10)
-    plt.xlabel('Eigenvlaue', fontsize=14, labelpad=10)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
-    plt.tight_layout()
+    return density, grids

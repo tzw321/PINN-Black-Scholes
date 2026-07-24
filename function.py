@@ -44,6 +44,42 @@ def collocation_points(S_max, T, n_pde=5000, n_boundary=500):
 
     return s, t
 
+def plot_collocation(S_max, T):
+    s, t = collocation_points(S_max, T)
+    s_pde, s_low, s_high, s_term = s
+    t_pde, t_low, t_high, t_term = t
+
+    plt.figure(figsize=(10, 6))
+    
+    # 1. Interior Domain Points (Randomly sampled PDE points)
+    plt.scatter(t_pde.detach().numpy(), s_pde.detach().numpy(), 
+                color='royalblue', alpha=0.4, s=10, label='Interior PDE Points')
+
+    # 2. Lower Boundary (S = 0)
+    plt.scatter(t_low.numpy(), s_low.numpy(), 
+                color='crimson', marker='o', s=15, label='Lower Bound: $C(0, t) = 0$')
+
+    # 3. Upper Boundary (S = S_max)
+    plt.scatter(t_high.numpy(), s_high.numpy(), 
+                color='darkorange', marker='o', s=15, label='Upper Bound: $C(S_{max}, t)$')
+
+    # 4. Terminal Payoff Boundary (t = T)
+    plt.scatter(t_term.numpy(), s_term.numpy(), 
+                color='forestgreen', marker='x', s=15, linewidths=2, label='Terminal Payoff: $t = T$')
+
+    plt.title('PINN Collocation Points & Boundary Domains', fontsize=14, fontweight='bold', pad=15)
+    plt.xlabel('Time to Maturity ($t$)', fontsize=12)
+    plt.ylabel('Stock Price ($S$)', fontsize=12)
+    
+    # Clean grid and neat layout margins
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.xlim(-0.02, T + 0.05)
+    plt.ylim(-5, S_max + 10)
+    
+    # Move legend outside or clear from points
+    plt.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='gainsboro', fontsize=10)
+    plt.tight_layout()
+    plt.show()
 
 def compute_pinn_loss(s, t, model):
     r = 0.05       # Risk-free rate
@@ -122,10 +158,14 @@ def compare_methods(r, sigma, K, T, model):
         mse_loss += (bs_analytical - bs_pinn) ** 2
         # Graph formatting
         ax.set_title(f'Option Price at $t = {t:.2f}$', fontsize=10, fontweight='bold')
-        ax.set_xlabel('Initial Stock Price ($S_0$)', fontsize=10)
-        ax.set_ylabel('European Call Option Price', fontsize=10)
         ax.grid(True, linestyle='--', alpha=0.6)
         ax.legend(fontsize=9)
+
+    for row in range(3):
+        axs[row, 0].set_ylabel('Call Option Price', fontsize=11, fontweight='bold')
+
+    for col in range(3):
+        axs[2, col].set_xlabel('Stock Price ($S_0$)', fontsize=11, fontweight='bold')
 
     mse_loss = np.sum(mse_loss) / len(time)
     return mse_loss
