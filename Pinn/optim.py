@@ -1,10 +1,13 @@
 import torch
 import numpy as np
-from function import compute_pinn_loss, collocation_points
+from function import compute_pinn_loss, eval_model, generate_data
+from itertools import product
+from model import PINN
+import gc
 
 
 # Train Model with LBFGS
-def train_model(data, model, optimizer, epochs):
+def train_model(data, model, optimizer, epochs, show_progress=False):
     
     loss_history = []
     current_losses = [0.0, 0.0, 0.0, 0.0]
@@ -21,8 +24,10 @@ def train_model(data, model, optimizer, epochs):
         total_loss_tensor = sum(loss_components)
         total_loss_tensor.backward()
         return total_loss_tensor
+
+    if show_progress:
+        print(f"Training with {type(optimizer).__name__}...")  
     
-    print(f"Training with {type(optimizer).__name__}...")
     for epoch in range(epochs):
         # Step the optimizer
         if isinstance(optimizer, torch.optim.LBFGS):
@@ -43,10 +48,11 @@ def train_model(data, model, optimizer, epochs):
             
         loss_history.append(total_loss)
         
-        if epoch % 500 == 0:
+        if epoch % 500 == 0 and show_progress:
             print(f"Epoch {epoch} | Total Loss: {total_loss:.6f}")
         
     return loss_history
+
 
 
 def optim_tune(configs, data):
@@ -87,9 +93,40 @@ def optim_tune(configs, data):
     return results
 
 
-def gridsearch(grid):
-    for models, params in grid.items():
-        learning_rate = params['lr']
-        layers = params['layers']
+def gridsearch(grid, training_data, training_params, testing_data, testing_params):
+    keys = grid.keys()
+    values = grid.values()
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+    models = []
+    r, sigma, K, T = testing_params
+    print(f"Num of Configs {len(combinations)}")
+    for idx, config in enumerate(combinations):
+        learning_rate = config['lr']
+        layers = config['layers']
+        hidden_layers = config['hidden_layers']
+        epochs_Adam = config["epochs_Adam"]
+        epochs_LBFGS = config["epochs_LBFGS"]
+        model = PINN(params=training_params, layers=layers, hidden_layers=hidden_layers)
+
+        # Training
+        print(f'Training configs {idx + 1}')
+        loss_adam = train_model(training_data, model, torch.optim.Adam(model.parameters(), lr=learning_rate), epochs_Adam)
+        loss_LBFGS = train_model(training_data, model, torch.optim.LBFGS(model.parameters(), lr=1.0, max_iter=20, line_search_fn="strong_wolfe"), epochs_LBFGS)
+
+        mse_loss = eval_model(r, sigma, K, T, testing_data, model)
+        models.append([model.cpu(), mse_loss])
+
+        del model
+        del loss_adam, loss_LBFGS
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    
+    return models
+
+
+        
+
+
 
         
