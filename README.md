@@ -1,6 +1,6 @@
 # Physics-Informed Neural Network for Black-Scholes Option Pricing
 
-A Physics-Informed Neural Network (PINN) implementation for solving the **Black-Scholes Partial Differential Equation (PDE)** for European option pricing. Instead of relying solely on labeled training data, the neural network learns mathematical laws of option price.
+This is a self-initiated project exploring the intersection of physics-informed machine learning and quantitative finance. The goal was to implement a Physics-Informed Neural Network (PINN) to solve the **Black-Scholes Partial Differential Equation (PDE)** for European option pricing without relying on labeled option-price data. Instead of relying solely on labeled training data, the neural network learns mathematical laws of option price.
 This project demonstrates how **machine learning** and **financial mathematics** can be combined to solve differential equations without traditional numerical methods such as finite difference or finite element methods.
 
 ## Features
